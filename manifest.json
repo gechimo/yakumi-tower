@@ -1,6 +1,6 @@
 {
-    "name": "Animal Tower Battle Clone",
-    "short_name": "Animal Tower",
+    "name": "Yakumi Tower Battle Clone",
+    "short_name": "Yakumi Tower",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#87CEEB",
@@ -17,4 +17,5 @@
             "type": "image/png"
         }
     ]
+
 }
