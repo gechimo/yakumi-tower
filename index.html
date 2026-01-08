@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animal Tower Battle Clone</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/poly-decomp@0.3.0/build/decomp.min.js"></script>
+</head>
+
+<body>
+    <div id="game-container"></div>
+    <div id="ui-layer">
+        <div id="score">Score: 0</div>
+
+        <!-- Game Over / Start Screen Overlay -->
+        <div id="overlay">
+            <h1 id="title">Animal Tower</h1>
+            <div id="game-over-content" style="display: none;">
+                <h2>Game Over</h2>
+                <p id="final-score">Score: 0</p>
+                <input type="text" id="player-name" placeholder="Enter Name" maxlength="10">
+                <button id="save-score-btn">Save Score</button>
+            </div>
+
+            <div id="ranking-container">
+                <h3>Ranking</h3>
+                <ul id="ranking-list"></ul>
+            </div>
+
+            <button id="start-btn">Start Game</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+
+</html>
