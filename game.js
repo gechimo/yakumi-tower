@@ -110,28 +110,7 @@ function getVerticesFromImage(img, samplingStep = 4) {
     for (let y = 0; y < h; y += samplingStep) {
         for (let x = 0; x < w; x += samplingStep) {
             if (getVal(x, y) === 1) {
-                // simplified: actually just collecting boundary points is not enough for concave, 
-                // we need an ordered path.
-                // For simplicity in this constraints, let's use a simpler "scan & simplify" or find convex hull library?
-                // No, user wants concave support (poly-decomp).
-
-                // Since implementing full Marching Squares from scratch in one file is error-prone,
-                // let's do a simplified "Radial Raycast" or just simple Hull if the shape is blobby?
-                // "動物タワーバトル" typically implies convex/concave shapes.
-
-                // Let's implement a basic breakdown:
-                // 1. Get all non-transparent pixels.
-                // 2. Compute convex hull? No, need concave.
-                // 3. Actually poly-decomp handles concave decomposition for finding simpler convex parts.
-                // BUT `Vertices.fromPath` or similar needs an ordered set of points.
-
-                // Let's try the "Marching Squares" approach properly but kept simple.
-                // Actually, for "illustration shape", usually a simplified hull is fine.
-                // Let's assume the user wants "TIGHT" fit.
-
-                // Attempting a simple contour tracer:
-                // Scan for first non-transparent pixel.
-                // Follow boundary.
+                
                 startPoint = { x, y };
                 break;
             }
@@ -145,27 +124,7 @@ function getVerticesFromImage(img, samplingStep = 4) {
     let outline = [];
     let cur = { ...startPoint };
     let prev = { x: cur.x, y: cur.y - 1 }; // Entering from above
-    // Directions: N, NE, E, SE, S, SW, W, NW
-    // We step by 'samplingStep' to reduce vertext count
-    // but Moore tracing assumes grid.
 
-    // FALLBACK: Since implementing robust tracer on raw pixel data is heavy,
-    // let's use a simplified approach:
-    // Create a set of points from boundary pixels (using a grid),
-    // then sort them? No, sorting radial only works for star-shaped.
-
-    // Let's go with Hull-ish approach using `Matter.Vertices.hull` initially? 
-    // No, user specifically complained about "box" being too big.
-
-    // Better Approach for this context:
-    // Use an approx algorithm: "Marching Squares"
-    // We will scan grid. For each cell, determine state (0-15).
-    // Generate line segments.
-    // Connect segments.
-
-    // SIMPLIFICATION:
-    // Just use 8 points? No, too simple.
-    // Let's iterate and simply find edge pixels at intervals.
 
     const vertices = [];
     // We will do a radial scan from center? No, assumes star convex.
@@ -197,9 +156,7 @@ function getVerticesFromImage(img, samplingStep = 4) {
     do {
         path.push({ x: cx, y: cy });
 
-        // Look for next solid in direction relative to current dir
-        // We want to hug the left wall (or right). Let's hug Right (solid is on right).
-        // Turn Left, then scan clockwise
+
         let found = false;
         const checkDirs = [(dir + 3) % 4, dir, (dir + 1) % 4, (dir + 2) % 4];
 
@@ -298,7 +255,7 @@ function createBody(x, y, assetPath, data) {
             frictionStatic: 0.5,
             slop: 0.05,
             density: 0.04,
-            label: 'animal',
+            label: 'yakumi',
             render: { visible: false },
             plugin: { sprite: spriteData },
             chamfer: { radius: 4 } // Round corners to prevent snagging
@@ -312,7 +269,7 @@ function createBody(x, y, assetPath, data) {
                 frictionStatic: 0.5,
                 slop: 0.05,
                 density: 0.04,
-                label: 'animal',
+                label: 'yakumi',
                 render: { visible: false },
                 plugin: { sprite: spriteData },
                 chamfer: { radius: 4 }
@@ -325,7 +282,7 @@ function createBody(x, y, assetPath, data) {
             frictionStatic: 0.5,
             slop: 0.05,
             density: 0.04,
-            label: 'animal',
+            label: 'yakumi',
             render: { visible: false },
             plugin: { sprite: spriteData },
             chamfer: { radius: 4 }
@@ -371,7 +328,7 @@ function startGame() {
 
     const bodies = Composite.allBodies(world);
     bodies.forEach(body => {
-        if (body.label === 'animal') {
+        if (body.label === 'yakumi') {
             Composite.remove(world, body);
         }
     });
@@ -479,7 +436,7 @@ Events.on(engine, 'afterUpdate', () => {
     const bodies = Composite.allBodies(world);
     for (let i = 0; i < bodies.length; i++) {
         const body = bodies[i];
-        if (body.label !== 'animal') continue;
+        if (body.label !== 'yakumi') continue;
         if (body === currentBody && !isDropping) continue;
 
         if (body.position.y > height + 50) {
@@ -496,3 +453,4 @@ window.addEventListener('resize', () => {
 });
 
 updateRankingDisplay();
+
