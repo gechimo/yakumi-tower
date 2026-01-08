@@ -1,4 +1,3 @@
-// Module aliases
 const Engine = Matter.Engine,
     Render = Matter.Render,
     Runner = Matter.Runner,
@@ -11,10 +10,10 @@ const Engine = Matter.Engine,
     Vertices = Matter.Vertices,
     Vector = Matter.Vector;
 
-// Game setup
 const engine = Engine.create({
-    positionIterations: 10,
-    velocityIterations: 10
+    positionIterations: 30,
+    velocityIterations: 30,
+    enableSleeping: false
 });
 const world = engine.world;
 
@@ -33,21 +32,17 @@ const render = Render.create({
     }
 });
 
-// Assets configuration
 const assets = [
     'assets/1.png',
     'assets/2.png',
-    'assets/3.png',
     'assets/4.png',
     'assets/5.png',
     'assets/6.png'
 ];
 
-// Cache for generated vertices
 const vertexCache = {};
 
-// Platform
-const platformWidth = 600;
+const platformWidth = 480;
 const ground = Bodies.rectangle(width / 2, height - 30, platformWidth, 60, {
     isStatic: true,
     friction: 1.0,
@@ -58,14 +53,12 @@ const ground = Bodies.rectangle(width / 2, height - 30, platformWidth, 60, {
 
 Composite.add(world, [ground]);
 
-// Game Logic variables
 let currentBody = null;
 let isDropping = false;
 let gameOver = false;
 let score = 0;
 let gameStarted = false;
 
-// UI Elements
 const uiScore = document.getElementById('score');
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
@@ -75,12 +68,9 @@ const saveScoreBtn = document.getElementById('save-score-btn');
 const rankingList = document.getElementById('ranking-list');
 const playerNameInput = document.getElementById('player-name');
 
-// Run the engine
 Render.run(render);
 const runner = Runner.create();
 Runner.run(runner, engine);
-
-// --- Vertex Generation Logic ---
 
 function getVerticesFromImage(img, samplingStep = 4) {
     const canvas = document.createElement('canvas');
@@ -90,27 +80,20 @@ function getVerticesFromImage(img, samplingStep = 4) {
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, img.width, img.height).data;
 
-    // Marching Squares Algorithm
-    const points = [];
     const w = img.width;
     const h = img.height;
-
-    // Threshold for alpha
     const alphaThreshold = 10;
 
     function getVal(x, y) {
         if (x < 0 || y < 0 || x >= w || y >= h) return 0;
-        const index = (y * w + x) * 4 + 3; // Alpha channel
+        const index = (y * w + x) * 4 + 3;
         return data[index] > alphaThreshold ? 1 : 0;
     }
 
-    // Identify contour points using Marching Squares
-    // Start finding a starting point
     let startPoint = null;
     for (let y = 0; y < h; y += samplingStep) {
         for (let x = 0; x < w; x += samplingStep) {
             if (getVal(x, y) === 1) {
-                
                 startPoint = { x, y };
                 break;
             }
@@ -120,23 +103,10 @@ function getVerticesFromImage(img, samplingStep = 4) {
 
     if (!startPoint) return null;
 
-    // Moore-Neighbor Tracing
-    let outline = [];
-    let cur = { ...startPoint };
-    let prev = { x: cur.x, y: cur.y - 1 }; // Entering from above
-
-
-    const vertices = [];
-    // We will do a radial scan from center? No, assumes star convex.
-
-    // Let's try the "boundary follower" on a downsampled grid.
     const step = samplingStep;
     const path = [];
-
-    // Helper to check pixel
     const isSolid = (x, y) => getVal(x, y) === 1;
 
-    // Find first solid
     let sx = -1, sy = -1;
     outer: for (let y = 0; y < h; y += step) {
         for (let x = 0; x < w; x += step) {
@@ -146,17 +116,12 @@ function getVerticesFromImage(img, samplingStep = 4) {
 
     if (sx === -1) return null;
 
-    // Trace
     let cx = sx, cy = sy;
-    // Directions: 0:Right, 1:Down, 2:Left, 3:Up
     let dir = 0;
     let maxIter = 5000;
 
-    // Clockwise tracing
     do {
         path.push({ x: cx, y: cy });
-
-
         let found = false;
         const checkDirs = [(dir + 3) % 4, dir, (dir + 1) % 4, (dir + 2) % 4];
 
@@ -176,27 +141,23 @@ function getVerticesFromImage(img, samplingStep = 4) {
             }
         }
 
-        if (!found) break; // Stuck / Isolated
+        if (!found) break;
         maxIter--;
     } while ((cx !== sx || cy !== sy) && maxIter > 0);
 
-    // Simplify path using Ramer-Douglas-Peucker would be ideal, 
-    // but simple "distance filter" is easier.
     const simplified = [];
     if (path.length > 0) simplified.push(path[0]);
     for (let i = 1; i < path.length; i++) {
         const p1 = simplified[simplified.length - 1];
         const p2 = path[i];
         const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-        if (dist > 15) { // Minimum segment length
+        if (dist > 15) {
             simplified.push(p2);
         }
     }
 
     return simplified.map(p => ({ x: p.x, y: p.y }));
 }
-
-// --- Logic ---
 
 function spawnNewBody() {
     if (gameOver) return;
@@ -215,17 +176,14 @@ function spawnNewBody() {
             if (gameOver) return;
             const maxDim = 120;
             const scale = Math.min(maxDim / img.width, maxDim / img.height);
-            // We compute vertices on full image then scale them
-            const rawVertices = getVerticesFromImage(img, 4); // sampling step 4
+            const rawVertices = getVerticesFromImage(img, 4);
 
-            // Scale vertices
             const vertices = rawVertices ? rawVertices.map(v => ({ x: v.x * scale, y: v.y * scale })) : null;
 
             if (vertices && vertices.length > 2) {
                 vertexCache[randomAsset] = { vertices, scale, img };
                 createBody(startX, startY, randomAsset, vertexCache[randomAsset]);
             } else {
-                // Fallback to Box if generation failed
                 vertexCache[randomAsset] = { vertices: null, scale, img };
                 createBody(startX, startY, randomAsset, vertexCache[randomAsset]);
             }
@@ -244,32 +202,26 @@ function createBody(x, y, assetPath, data) {
     };
 
     if (vertices) {
-        // Find center of mass offset potentially?
-        // Bodies.fromVertices centers the body.
-        // We should just let it center.
-
-        // Ensure vertices are convex/decomposed
         body = Bodies.fromVertices(x, y, [vertices], {
             restitution: 0.0,
-            friction: 0.5,
-            frictionStatic: 0.5,
+            friction: 1.0,
+            frictionStatic: 10,
             slop: 0.05,
-            density: 0.04,
-            label: 'yakumi',
+            density: 0.002,
+            label: 'animal',
             render: { visible: false },
             plugin: { sprite: spriteData },
-            chamfer: { radius: 4 } // Round corners to prevent snagging
+            chamfer: { radius: 4 }
         }, true);
 
         if (!body) {
-            // Fallback if decomposition failed
             body = Bodies.rectangle(x, y, img.width * scale, img.height * scale, {
                 restitution: 0.0,
-                friction: 0.5,
-                frictionStatic: 0.5,
+                friction: 1.0,
+                frictionStatic: 10,
                 slop: 0.05,
-                density: 0.04,
-                label: 'yakumi',
+                density: 0.002,
+                label: 'animal',
                 render: { visible: false },
                 plugin: { sprite: spriteData },
                 chamfer: { radius: 4 }
@@ -278,11 +230,11 @@ function createBody(x, y, assetPath, data) {
     } else {
         body = Bodies.rectangle(x, y, img.width * scale, img.height * scale, {
             restitution: 0.0,
-            friction: 0.5,
-            frictionStatic: 0.5,
+            friction: 1.0,
+            frictionStatic: 10,
             slop: 0.05,
-            density: 0.04,
-            label: 'yakumi',
+            density: 0.002,
+            label: 'animal',
             render: { visible: false },
             plugin: { sprite: spriteData },
             chamfer: { radius: 4 }
@@ -294,7 +246,6 @@ function createBody(x, y, assetPath, data) {
     isDropping = false;
     Composite.add(world, currentBody);
 }
-
 
 function updateRankingDisplay() {
     const ranking = JSON.parse(localStorage.getItem('atb_ranking') || '[]');
@@ -328,7 +279,7 @@ function startGame() {
 
     const bodies = Composite.allBodies(world);
     bodies.forEach(body => {
-        if (body.label === 'yakumi') {
+        if (body.label === 'animal') {
             Composite.remove(world, body);
         }
     });
@@ -350,9 +301,6 @@ function endGame() {
     startBtn.style.display = 'none';
     updateRankingDisplay();
 }
-
-
-// --- Event Listeners ---
 
 startBtn.addEventListener('click', startGame);
 saveScoreBtn.addEventListener('click', saveScore);
@@ -396,8 +344,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// --- Custom Rendering ---
-
 Events.on(render, 'afterRender', () => {
     const bodies = Composite.allBodies(world);
     const ctx = render.context;
@@ -407,11 +353,6 @@ Events.on(render, 'afterRender', () => {
         if (body.plugin && body.plugin.sprite) {
             const sprite = body.plugin.sprite;
             const img = vertexCache[sprite.texture] ? vertexCache[sprite.texture].img : null;
-
-            // Should have image in cache or load it? 
-            // In spawnNewBody we pre-load image. Let's assume vertexCache has it.
-            // Actually spawnNewBody stores { vertices, scale, img } in vertexCache[assetPath].
-            // So we can retrieve it.
 
             if (img) {
                 ctx.save();
@@ -436,7 +377,7 @@ Events.on(engine, 'afterUpdate', () => {
     const bodies = Composite.allBodies(world);
     for (let i = 0; i < bodies.length; i++) {
         const body = bodies[i];
-        if (body.label !== 'yakumi') continue;
+        if (body.label !== 'animal') continue;
         if (body === currentBody && !isDropping) continue;
 
         if (body.position.y > height + 50) {
@@ -453,4 +394,3 @@ window.addEventListener('resize', () => {
 });
 
 updateRankingDisplay();
-
